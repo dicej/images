@@ -1,0 +1,10 @@
+[package]
+name = "images"
+version = "0.1.0"
+authors = ["Joel Dice <joel.dice@gmail.com>"]
+
+[dependencies]
+rexiv2 = "*"
+failure = "*"
+regex = "*"
+sha2 = "*"
