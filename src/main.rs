@@ -1,7 +1,6 @@
 extern crate failure;
 extern crate regex;
 extern crate rexiv2;
-extern crate sha2;
 
 // This program recursively searches the specified source directory
 // for JPEG files with valid Exif.Image.DateTime tags and hard links
@@ -14,18 +13,15 @@ use std::io::Read;
 use rexiv2::Metadata;
 use failure::Error;
 use regex::Regex;
-use sha2::{Digest, Sha256};
 
-fn hash<P: AsRef<Path>>(path: P) -> Result<Vec<u8>, Error> {
-    let mut hasher = Sha256::default();
+fn content<P: AsRef<Path>>(path: P) -> Result<Vec<u8>, Error> {
     let mut buffer = Vec::new();
     File::open(path)?.read_to_end(&mut buffer)?;
-    hasher.input(&buffer);
-    Ok(hasher.result().into_iter().collect())
+    Ok(buffer)
 }
 
 fn run<P: AsRef<Path>>(src: P, dst: &str, pattern: &Regex) -> Result<(), Error> {
-    for entry in read_dir(src)? {
+    'outer: for entry in read_dir(src)? {
         let entry = entry?;
         let path = entry.path();
         if path.is_file() {
@@ -51,26 +47,19 @@ fn run<P: AsRef<Path>>(src: P, dst: &str, pattern: &Regex) -> Result<(), Error> 
                         let mut buf = Path::new(dst).to_path_buf();
                         buf.push(&format!("{}.jpeg", name));
 
-                        if buf.is_file() {
+                        let mut i = 1;
+                        while buf.is_file() {
                             println!("{} already exists", buf.to_str().unwrap_or("<unprintable>"));
-                            // this is a bit silly -- if we're going
-                            // to read the entire files in anyway, we
-                            // might as well just compare them
-                            // byte-by-byte instead of calculating
-                            // hashes and comparing those.
-                            if hash(&buf)? == hash(&path)? {
-                                println!("hashes map; skipping");
-                                continue;
+                            if content(&buf)? == content(&path)? {
+                                println!("contents match; skipping");
+                                continue 'outer;
                             }
 
-                            let mut i = 1;
-                            while buf.is_file() {
-                                buf = Path::new(dst).to_path_buf();
-                                buf.push(&format!("{}-{}.jpeg", name, i));
-                                i += 1;
-                            }
+                            buf = Path::new(dst).to_path_buf();
+                            buf.push(&format!("{}-{}.jpeg", name, i));
+                            i += 1;
 
-                            println!("using {} instead", buf.to_str().unwrap_or("<unprintable>"));
+                            println!("trying {} instead", buf.to_str().unwrap_or("<unprintable>"));
                         }
 
                         println!(

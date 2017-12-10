@@ -7,4 +7,3 @@ authors = ["Joel Dice <joel.dice@gmail.com>"]
 rexiv2 = "*"
 failure = "*"
 regex = "*"
-sha2 = "*"
